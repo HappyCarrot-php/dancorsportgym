@@ -1,144 +1,70 @@
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/ingreso.dart';
 import '../models/gasto.dart';
 import '../models/cierre_dia.dart';
 
-/// Servicio para gestionar la base de datos SQLite local
+/// Servicio para gestionar la base de datos en Supabase
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
-  static Database? _database;
-
+  
   factory DatabaseService() {
     return _instance;
   }
 
   DatabaseService._internal();
 
-  /// Obtiene la instancia de la base de datos
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDatabase();
-    return _database!;
-  }
-
-  /// Inicializa la base de datos
-  Future<Database> _initDatabase() async {
-    final documentsDirectory = await getApplicationDocumentsDirectory();
-    final path = join(documentsDirectory.path, 'dancor_sport_gym.db');
-
-    return await openDatabase(
-      path,
-      version: 2,
-      onCreate: _onCreate,
-      onUpgrade: _onUpgrade,
-    );
-  }
-
-  /// Crea las tablas de la base de datos
-  Future<void> _onCreate(Database db, int version) async {
-    // Tabla de ingresos
-    await db.execute('''
-      CREATE TABLE ingresos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        concepto TEXT NOT NULL,
-        monto REAL NOT NULL,
-        fecha TEXT NOT NULL,
-        nombre TEXT,
-        tipo TEXT NOT NULL,
-        fecha_inicio TEXT,
-        fecha_vencimiento TEXT,
-        incluye_inscripcion INTEGER DEFAULT 0,
-        telefono TEXT,
-        notas TEXT
-      )
-    ''');
-
-    // Tabla de gastos
-    await db.execute('''
-      CREATE TABLE gastos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        concepto TEXT NOT NULL,
-        monto REAL NOT NULL,
-        fecha TEXT NOT NULL
-      )
-    ''');
-
-    // Tabla de cierres diarios
-    await db.execute('''
-      CREATE TABLE cierres_diarios (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        fecha TEXT NOT NULL UNIQUE,
-        ingresos_totales REAL NOT NULL,
-        gastos_totales REAL NOT NULL,
-        resultado_final REAL NOT NULL
-      )
-    ''');
-  }
-
-  /// Actualiza la base de datos a versiones nuevas
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      // Agregar nuevos campos a la tabla ingresos
-      await db.execute('ALTER TABLE ingresos ADD COLUMN fecha_inicio TEXT');
-      await db.execute('ALTER TABLE ingresos ADD COLUMN fecha_vencimiento TEXT');
-      await db.execute('ALTER TABLE ingresos ADD COLUMN incluye_inscripcion INTEGER DEFAULT 0');
-      await db.execute('ALTER TABLE ingresos ADD COLUMN telefono TEXT');
-      await db.execute('ALTER TABLE ingresos ADD COLUMN notas TEXT');
-    }
-  }
+  /// Obtiene el cliente de Supabase
+  SupabaseClient get _client => Supabase.instance.client;
 
   // ============ INGRESOS ============
 
   /// Inserta un nuevo ingreso
   Future<int> insertarIngreso(Ingreso ingreso) async {
-    final db = await database;
-    return await db.insert('ingresos', ingreso.toMap());
+    final data = await _client
+        .from('ingresos')
+        .insert(ingreso.toMap())
+        .select('id')
+        .single();
+    return data['id'] as int;
   }
 
   /// Obtiene todos los ingresos
   Future<List<Ingreso>> obtenerIngresos() async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'ingresos',
-      orderBy: 'fecha DESC',
-    );
-    return List.generate(maps.length, (i) => Ingreso.fromMap(maps[i]));
+    final response = await _client
+        .from('ingresos')
+        .select()
+        .order('fecha', ascending: false);
+    return (response as List).map((e) => Ingreso.fromMap(e)).toList();
   }
 
   /// Obtiene ingresos de una fecha específica
   Future<List<Ingreso>> obtenerIngresosPorFecha(DateTime fecha) async {
-    final db = await database;
     final fechaStr = fecha.toIso8601String().split('T')[0];
-    final List<Map<String, dynamic>> maps = await db.query(
-      'ingresos',
-      where: 'date(fecha) = ?',
-      whereArgs: [fechaStr],
-      orderBy: 'fecha DESC',
-    );
-    return List.generate(maps.length, (i) => Ingreso.fromMap(maps[i]));
+    final response = await _client
+        .from('ingresos')
+        .select()
+        .gte('fecha', '$fechaStr 00:00:00')
+        .lte('fecha', '$fechaStr 23:59:59')
+        .order('fecha', ascending: false);
+    return (response as List).map((e) => Ingreso.fromMap(e)).toList();
   }
 
   /// Actualiza un ingreso existente
   Future<int> actualizarIngreso(Ingreso ingreso) async {
-    final db = await database;
-    return await db.update(
-      'ingresos',
-      ingreso.toMap(),
-      where: 'id = ?',
-      whereArgs: [ingreso.id],
-    );
+    await _client
+        .from('ingresos')
+        .update(ingreso.toMap())
+        .eq('id', ingreso.id!);
+    return 1;
   }
 
   /// Elimina un ingreso
   Future<int> eliminarIngreso(int id) async {
-    final db = await database;
-    return await db.delete(
-      'ingresos',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    await _client
+        .from('ingresos')
+        .delete()
+        .eq('id', id);
+    return 1;
   }
 
   /// Calcula el total de ingresos de una fecha
@@ -151,52 +77,51 @@ class DatabaseService {
 
   /// Inserta un nuevo gasto
   Future<int> insertarGasto(Gasto gasto) async {
-    final db = await database;
-    return await db.insert('gastos', gasto.toMap());
+    final data = await _client
+        .from('gastos')
+        .insert(gasto.toMap())
+        .select('id')
+        .single();
+    return data['id'] as int;
   }
 
   /// Obtiene todos los gastos
   Future<List<Gasto>> obtenerGastos() async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'gastos',
-      orderBy: 'fecha DESC',
-    );
-    return List.generate(maps.length, (i) => Gasto.fromMap(maps[i]));
+    final response = await _client
+        .from('gastos')
+        .select()
+        .order('fecha', ascending: false);
+    return (response as List).map((e) => Gasto.fromMap(e)).toList();
   }
 
   /// Obtiene gastos de una fecha específica
   Future<List<Gasto>> obtenerGastosPorFecha(DateTime fecha) async {
-    final db = await database;
     final fechaStr = fecha.toIso8601String().split('T')[0];
-    final List<Map<String, dynamic>> maps = await db.query(
-      'gastos',
-      where: 'date(fecha) = ?',
-      whereArgs: [fechaStr],
-      orderBy: 'fecha DESC',
-    );
-    return List.generate(maps.length, (i) => Gasto.fromMap(maps[i]));
+    final response = await _client
+        .from('gastos')
+        .select()
+        .gte('fecha', '$fechaStr 00:00:00')
+        .lte('fecha', '$fechaStr 23:59:59')
+        .order('fecha', ascending: false);
+    return (response as List).map((e) => Gasto.fromMap(e)).toList();
   }
 
   /// Actualiza un gasto existente
   Future<int> actualizarGasto(Gasto gasto) async {
-    final db = await database;
-    return await db.update(
-      'gastos',
-      gasto.toMap(),
-      where: 'id = ?',
-      whereArgs: [gasto.id],
-    );
+    await _client
+        .from('gastos')
+        .update(gasto.toMap())
+        .eq('id', gasto.id!);
+    return 1;
   }
 
   /// Elimina un gasto
   Future<int> eliminarGasto(int id) async {
-    final db = await database;
-    return await db.delete(
-      'gastos',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    await _client
+        .from('gastos')
+        .delete()
+        .eq('id', id);
+    return 1;
   }
 
   /// Calcula el total de gastos de una fecha
@@ -209,52 +134,55 @@ class DatabaseService {
 
   /// Inserta o actualiza un cierre diario
   Future<int> guardarCierreDiario(CierreDia cierre) async {
-    final db = await database;
     final fechaStr = cierre.fecha.toIso8601String().split('T')[0];
 
     // Verificar si ya existe un cierre para esta fecha
-    final List<Map<String, dynamic>> existing = await db.query(
-      'cierres_diarios',
-      where: 'date(fecha) = ?',
-      whereArgs: [fechaStr],
-    );
+    final existing = await _client
+        .from('cierres_diarios')
+        .select('id')
+        .gte('fecha', '$fechaStr 00:00:00')
+        .lte('fecha', '$fechaStr 23:59:59')
+        .maybeSingle();
 
-    if (existing.isNotEmpty) {
+    if (existing != null) {
       // Actualizar cierre existente
-      return await db.update(
-        'cierres_diarios',
-        cierre.toMap(),
-        where: 'date(fecha) = ?',
-        whereArgs: [fechaStr],
-      );
+      await _client
+          .from('cierres_diarios')
+          .update(cierre.toMap())
+          .eq('id', existing['id']);
+      return existing['id'] as int;
     } else {
       // Insertar nuevo cierre
-      return await db.insert('cierres_diarios', cierre.toMap());
+      final data = await _client
+          .from('cierres_diarios')
+          .insert(cierre.toMap())
+          .select('id')
+          .single();
+      return data['id'] as int;
     }
   }
 
   /// Obtiene todos los cierres diarios
   Future<List<CierreDia>> obtenerCierresDiarios() async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'cierres_diarios',
-      orderBy: 'fecha DESC',
-    );
-    return List.generate(maps.length, (i) => CierreDia.fromMap(maps[i]));
+    final response = await _client
+        .from('cierres_diarios')
+        .select()
+        .order('fecha', ascending: false);
+    return (response as List).map((e) => CierreDia.fromMap(e)).toList();
   }
 
   /// Obtiene el cierre de una fecha específica
   Future<CierreDia?> obtenerCierrePorFecha(DateTime fecha) async {
-    final db = await database;
     final fechaStr = fecha.toIso8601String().split('T')[0];
-    final List<Map<String, dynamic>> maps = await db.query(
-      'cierres_diarios',
-      where: 'date(fecha) = ?',
-      whereArgs: [fechaStr],
-    );
+    final response = await _client
+        .from('cierres_diarios')
+        .select()
+        .gte('fecha', '$fechaStr 00:00:00')
+        .lte('fecha', '$fechaStr 23:59:59')
+        .maybeSingle();
 
-    if (maps.isEmpty) return null;
-    return CierreDia.fromMap(maps.first);
+    if (response == null) return null;
+    return CierreDia.fromMap(response);
   }
 
   /// Crea automáticamente el cierre del día con los datos actuales
@@ -276,28 +204,17 @@ class DatabaseService {
 
   /// Actualiza un cierre existente
   Future<void> actualizarCierreDiario(CierreDia cierre) async {
-    final db = await database;
-    await db.update(
-      'cierres_diarios',
-      cierre.toMap(),
-      where: 'id = ?',
-      whereArgs: [cierre.id],
-    );
+    await _client
+        .from('cierres_diarios')
+        .update(cierre.toMap())
+        .eq('id', cierre.id!);
   }
 
   /// Elimina un cierre diario
   Future<void> eliminarCierreDiario(int id) async {
-    final db = await database;
-    await db.delete(
-      'cierres_diarios',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-  }
-
-  /// Cierra la base de datos
-  Future<void> close() async {
-    final db = await database;
-    await db.close();
+    await _client
+        .from('cierres_diarios')
+        .delete()
+        .eq('id', id);
   }
 }

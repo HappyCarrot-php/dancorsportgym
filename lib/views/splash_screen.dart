@@ -198,13 +198,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.storage,
+                          Icons.cloud,
                           size: 16,
                           color: Colors.grey[500],
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'Base de Datos Local',
+                          'Base de Datos en la Nube',
                           style: TextStyle(
                             fontSize: 11,
                             color: Colors.grey[500],
@@ -215,7 +215,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'No requiere internet',
+                      'Requiere conexión a internet',
                       style: TextStyle(
                         fontSize: 10,
                         color: Colors.grey[500],

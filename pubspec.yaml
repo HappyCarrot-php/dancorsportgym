@@ -42,10 +42,8 @@ dependencies:
   # State management
   provider: ^6.1.1
   
-  # Local database
-  sqflite: ^2.3.0
-  path: ^1.9.0
-  path_provider: ^2.1.1
+  # Supabase
+  supabase_flutter: ^2.5.6
   
   # Date formatting
   intl: ^0.20.2
