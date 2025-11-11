@@ -23,6 +23,7 @@ class _NuevoSuscripcionScreenState extends State<NuevoSuscripcionScreen> {
   bool _incluyeInscripcion = false;
   DateTime _fechaPago = DateTime.now(); // Fecha de pago seleccionada
   bool _usarFechaHoy = true; // Opción para usar fecha de hoy
+  bool _guardando = false;
 
   // Precios de suscripciones
   static const Map<String, double> PRECIOS = {
@@ -61,7 +62,13 @@ class _NuevoSuscripcionScreenState extends State<NuevoSuscripcionScreen> {
   }
 
   Future<void> _guardarSuscripcion() async {
+    if (_guardando) return; // Prevenir múltiples clics
+    
     if (_formKey.currentState!.validate()) {
+      setState(() {
+        _guardando = true;
+      });
+
       try {
         final fechaInicio = _fechaPago;
         // Calcular vencimiento basado en el día del mes
@@ -108,6 +115,12 @@ class _NuevoSuscripcionScreenState extends State<NuevoSuscripcionScreen> {
               backgroundColor: Colors.red,
             ),
           );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _guardando = false;
+          });
         }
       }
     }
@@ -423,6 +436,7 @@ class _NuevoSuscripcionScreenState extends State<NuevoSuscripcionScreen> {
                 texto: 'Registrar Suscripción',
                 icono: Icons.save,
                 onPressed: _guardarSuscripcion,
+                isLoading: _guardando,
               ),
             ],
           ),

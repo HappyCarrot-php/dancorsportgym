@@ -17,6 +17,7 @@ class _NuevoProductoScreenState extends State<NuevoProductoScreen> {
   final _formKey = GlobalKey<FormState>();
   final _conceptoController = TextEditingController();
   final _montoController = TextEditingController();
+  bool _guardando = false;
 
   @override
   void dispose() {
@@ -26,7 +27,13 @@ class _NuevoProductoScreenState extends State<NuevoProductoScreen> {
   }
 
   Future<void> _guardarProducto() async {
+    if (_guardando) return; // Prevenir múltiples clics
+    
     if (_formKey.currentState!.validate()) {
+      setState(() {
+        _guardando = true;
+      });
+
       try {
         final ingreso = Ingreso(
           concepto: _conceptoController.text.trim(),
@@ -55,6 +62,12 @@ class _NuevoProductoScreenState extends State<NuevoProductoScreen> {
               backgroundColor: Colors.red,
             ),
           );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _guardando = false;
+          });
         }
       }
     }
@@ -140,6 +153,7 @@ class _NuevoProductoScreenState extends State<NuevoProductoScreen> {
                 texto: 'Guardar Venta',
                 icono: Icons.save,
                 onPressed: _guardarProducto,
+                isLoading: _guardando,
               ),
             ],
           ),

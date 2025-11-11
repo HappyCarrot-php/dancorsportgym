@@ -5,12 +5,24 @@ import '../controllers/transaccion_controller.dart';
 import '../widgets/boton_primario.dart';
 
 /// Pantalla para registrar venta de visita ($40)
-class NuevoVisitaScreen extends StatelessWidget {
+class NuevoVisitaScreen extends StatefulWidget {
   const NuevoVisitaScreen({Key? key}) : super(key: key);
 
+  @override
+  State<NuevoVisitaScreen> createState() => _NuevoVisitaScreenState();
+}
+
+class _NuevoVisitaScreenState extends State<NuevoVisitaScreen> {
   static const double PRECIO_VISITA = 40.0;
+  bool _guardando = false;
 
   Future<void> _guardarVisita(BuildContext context) async {
+    if (_guardando) return; // Prevenir múltiples clics
+    
+    setState(() {
+      _guardando = true;
+    });
+
     try {
       final ingreso = Ingreso(
         concepto: 'Visita de 1 día',
@@ -39,6 +51,12 @@ class NuevoVisitaScreen extends StatelessWidget {
             backgroundColor: Colors.red,
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _guardando = false;
+        });
       }
     }
   }
@@ -113,6 +131,7 @@ class NuevoVisitaScreen extends StatelessWidget {
                   texto: 'Registrar Visita',
                   icono: Icons.check_circle,
                   onPressed: () => _guardarVisita(context),
+                  isLoading: _guardando,
                 ),
               ),
               const SizedBox(height: 16),

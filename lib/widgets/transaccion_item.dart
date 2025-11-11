@@ -44,15 +44,22 @@ class TransaccionItem extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.2),
-          child: Icon(
-            esIngreso ? Icons.arrow_upward : Icons.arrow_downward,
-            color: color,
+      child: InkWell(
+        onLongPress: () {
+          if (onEdit != null || onDelete != null) {
+            _mostrarMenuOpciones(context);
+          }
+        },
+        borderRadius: BorderRadius.circular(10),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          leading: CircleAvatar(
+            backgroundColor: color.withOpacity(0.2),
+            child: Icon(
+              esIngreso ? Icons.arrow_upward : Icons.arrow_downward,
+              color: color,
+            ),
           ),
-        ),
         title: Text(
           concepto,
           style: const TextStyle(
@@ -143,6 +150,38 @@ class TransaccionItem extends StatelessWidget {
                 ],
               ),
             ],
+          ],
+        ),
+      ),
+      ),
+    );
+  }
+
+  void _mostrarMenuOpciones(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (onEdit != null)
+              ListTile(
+                leading: const Icon(Icons.edit, color: Colors.blue),
+                title: const Text('Editar'),
+                onTap: () {
+                  Navigator.pop(context);
+                  onEdit!();
+                },
+              ),
+            if (onDelete != null)
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Eliminar'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _mostrarConfirmacionEliminacion(context);
+                },
+              ),
           ],
         ),
       ),
