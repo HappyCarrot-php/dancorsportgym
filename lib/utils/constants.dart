@@ -35,6 +35,7 @@ class AppConstants {
 
   static final formatoFechaCorta = DateFormat('dd/MM/yyyy', 'es');
   static final formatoFechaLarga = DateFormat('EEEE, dd MMMM yyyy', 'es');
+  static final formatoFechaConMes = DateFormat('dd \'de\' MMMM yyyy', 'es');
   static final formatoHora = DateFormat('HH:mm', 'es');
 
   /// Formatea un monto como moneda
@@ -45,6 +46,11 @@ class AppConstants {
   /// Formatea una fecha en formato corto
   static String formatearFechaCorta(DateTime fecha) {
     return formatoFechaCorta.format(fecha);
+  }
+
+  /// Formatea una fecha con mes en letra
+  static String formatearFechaConMes(DateTime fecha) {
+    return formatoFechaConMes.format(fecha);
   }
 
   /// Formatea una fecha en formato largo

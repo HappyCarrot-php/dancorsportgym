@@ -84,9 +84,10 @@ class _VerSuscripcionesScreenState extends State<VerSuscripcionesScreen> {
                   child: ExpansionTile(
                     leading: CircleAvatar(
                       backgroundColor: _obtenerColorEstado(diasRestantes),
-                      child: Text(
-                        '$diasRestantes',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      child: Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 28,
                       ),
                     ),
                     title: Text(
@@ -97,11 +98,21 @@ class _VerSuscripcionesScreenState extends State<VerSuscripcionesScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(AppConstants.obtenerNombreTipoIngreso(suscripcion.tipo)),
+                        const SizedBox(height: 4),
                         Text(
-                          'Vence: ${AppConstants.formatearFechaCorta(suscripcion.fechaVencimiento!)}',
+                          'Vence: ${AppConstants.formatearFechaConMes(suscripcion.fechaVencimiento!)}',
                           style: TextStyle(
                             color: _obtenerColorEstado(diasRestantes),
                             fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          '$diasRestantes días restantes',
+                          style: TextStyle(
+                            color: _obtenerColorEstado(diasRestantes),
+                            fontSize: 11,
+                            fontStyle: FontStyle.italic,
                           ),
                         ),
                       ],

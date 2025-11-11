@@ -20,21 +20,35 @@ class DatabaseService {
 
   /// Inserta un nuevo ingreso
   Future<int> insertarIngreso(Ingreso ingreso) async {
-    final data = await _client
-        .from('ingresos')
-        .insert(ingreso.toMap())
-        .select('id')
-        .single();
-    return data['id'] as int;
+    try {
+      final map = ingreso.toMap();
+      print('Insertando ingreso: $map');
+      final data = await _client
+          .from('ingresos')
+          .insert(map)
+          .select('id')
+          .single();
+      print('Ingreso insertado con id: ${data['id']}');
+      return data['id'] as int;
+    } catch (e) {
+      print('ERROR al insertar ingreso: $e');
+      rethrow;
+    }
   }
 
   /// Obtiene todos los ingresos
   Future<List<Ingreso>> obtenerIngresos() async {
-    final response = await _client
-        .from('ingresos')
-        .select()
-        .order('fecha', ascending: false);
-    return (response as List).map((e) => Ingreso.fromMap(e)).toList();
+    try {
+      final response = await _client
+          .from('ingresos')
+          .select()
+          .order('fecha', ascending: false);
+      print('Ingresos obtenidos: ${response.length} registros');
+      return (response as List).map((e) => Ingreso.fromMap(e)).toList();
+    } catch (e) {
+      print('ERROR al obtener ingresos: $e');
+      rethrow;
+    }
   }
 
   /// Obtiene ingresos de una fecha específica
@@ -77,12 +91,20 @@ class DatabaseService {
 
   /// Inserta un nuevo gasto
   Future<int> insertarGasto(Gasto gasto) async {
-    final data = await _client
-        .from('gastos')
-        .insert(gasto.toMap())
-        .select('id')
-        .single();
-    return data['id'] as int;
+    try {
+      final map = gasto.toMap();
+      print('Insertando gasto: $map');
+      final data = await _client
+          .from('gastos')
+          .insert(map)
+          .select('id')
+          .single();
+      print('Gasto insertado con id: ${data['id']}');
+      return data['id'] as int;
+    } catch (e) {
+      print('ERROR al insertar gasto: $e');
+      rethrow;
+    }
   }
 
   /// Obtiene todos los gastos

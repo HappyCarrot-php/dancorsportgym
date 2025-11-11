@@ -14,15 +14,19 @@ class CierreDia {
     required this.resultadoFinal,
   });
 
-  /// Convierte el modelo a un mapa para SQLite
+  /// Convierte el modelo a un mapa para Supabase
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
+    final map = <String, dynamic>{
       'fecha': fecha.toIso8601String(),
       'ingresos_totales': ingresosTotales,
       'gastos_totales': gastosTotales,
       'resultado_final': resultadoFinal,
     };
+    // Solo incluir id si existe (para updates)
+    if (id != null) {
+      map['id'] = id;
+    }
+    return map;
   }
 
   /// Crea una instancia desde un mapa de SQLite

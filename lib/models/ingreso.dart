@@ -26,10 +26,9 @@ class Ingreso {
     this.notas,
   });
 
-  /// Convierte el modelo a un mapa para SQLite
+  /// Convierte el modelo a un mapa para Supabase
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
+    final map = <String, dynamic>{
       'concepto': concepto,
       'monto': monto,
       'fecha': fecha.toIso8601String(),
@@ -37,13 +36,18 @@ class Ingreso {
       'tipo': tipo,
       'fecha_inicio': fechaInicio?.toIso8601String(),
       'fecha_vencimiento': fechaVencimiento?.toIso8601String(),
-      'incluye_inscripcion': incluyeInscripcion ? 1 : 0,
+      'incluye_inscripcion': incluyeInscripcion,
       'telefono': telefono,
       'notas': notas,
     };
+    // Solo incluir id si existe (para updates)
+    if (id != null) {
+      map['id'] = id;
+    }
+    return map;
   }
 
-  /// Crea una instancia desde un mapa de SQLite
+  /// Crea una instancia desde un mapa de Supabase
   factory Ingreso.fromMap(Map<String, dynamic> map) {
     return Ingreso(
       id: map['id'] as int?,
@@ -58,7 +62,7 @@ class Ingreso {
       fechaVencimiento: map['fecha_vencimiento'] != null 
           ? DateTime.parse(map['fecha_vencimiento'] as String) 
           : null,
-      incluyeInscripcion: map['incluye_inscripcion'] == 1,
+      incluyeInscripcion: map['incluye_inscripcion'] == true || map['incluye_inscripcion'] == 1,
       telefono: map['telefono'] as String?,
       notas: map['notas'] as String?,
     );
