@@ -147,13 +147,13 @@ class HomeScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: ElevatedButton.icon(
                         onPressed: () => _finalizarDia(context, controller),
-                        icon: const Icon(Icons.check),
+                        icon: const Icon(Icons.check_circle),
                         label: const Text('Finalizar Día'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              const Color(AppConstants.colorSecundario),
+                          backgroundColor: Colors.deepPurple,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 4,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
