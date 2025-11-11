@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/transaccion_controller.dart';
+import '../controllers/cierre_controller.dart';
 import '../models/ingreso.dart';
 import '../models/gasto.dart';
 import '../utils/constants.dart';
@@ -192,10 +193,20 @@ class HomeScreen extends StatelessWidget {
                         movimientos.addAll(controller.ingresos);
                         movimientos.addAll(controller.gastos);
                         
+                        // Ordenar por fecha (más reciente primero), y si es igual por id (más reciente primero)
                         movimientos.sort((a, b) {
                           final fechaA = a is Ingreso ? a.fecha : (a as Gasto).fecha;
                           final fechaB = b is Ingreso ? b.fecha : (b as Gasto).fecha;
-                          return fechaB.compareTo(fechaA);
+                          final comparacionFecha = fechaB.compareTo(fechaA);
+                          
+                          if (comparacionFecha != 0) {
+                            return comparacionFecha;
+                          }
+                          
+                          // Si las fechas son iguales, ordenar por ID (más reciente primero)
+                          final idA = a is Ingreso ? (a.id ?? 0) : (a as Gasto).id ?? 0;
+                          final idB = b is Ingreso ? (b.id ?? 0) : (b as Gasto).id ?? 0;
+                          return idB.compareTo(idA);
                         });
 
                         final movimiento = movimientos[index];
@@ -375,13 +386,24 @@ class HomeScreen extends StatelessWidget {
           SnackBar(
             content: Text(
               exito
-                  ? 'Día finalizado exitosamente'
-                  : 'Error al finalizar el día',
+                  ? '✅ Cierre guardado. Puedes seguir agregando movimientos.'
+                  : '❌ Error al finalizar el día',
             ),
             backgroundColor:
                 exito ? Colors.green : const Color(AppConstants.colorGasto),
+            duration: const Duration(seconds: 3),
           ),
         );
+        
+        // Recargar el controller de cierres si está disponible
+        if (exito) {
+          try {
+            final cierreController = Provider.of<CierreController>(context, listen: false);
+            await cierreController.cargarCierres();
+          } catch (e) {
+            debugPrint('No se pudo recargar cierres: $e');
+          }
+        }
       }
     }
   }

@@ -156,41 +156,58 @@ class DatabaseService {
 
   /// Inserta o actualiza un cierre diario
   Future<int> guardarCierreDiario(CierreDia cierre) async {
-    final fechaStr = cierre.fecha.toIso8601String().split('T')[0];
+    try {
+      final fechaStr = cierre.fecha.toIso8601String().split('T')[0];
+      print('Guardando cierre para fecha: $fechaStr');
 
-    // Verificar si ya existe un cierre para esta fecha
-    final existing = await _client
-        .from('cierres_diarios')
-        .select('id')
-        .gte('fecha', '$fechaStr 00:00:00')
-        .lte('fecha', '$fechaStr 23:59:59')
-        .maybeSingle();
-
-    if (existing != null) {
-      // Actualizar cierre existente
-      await _client
+      // Verificar si ya existe un cierre para esta fecha
+      final existing = await _client
           .from('cierres_diarios')
-          .update(cierre.toMap())
-          .eq('id', existing['id']);
-      return existing['id'] as int;
-    } else {
-      // Insertar nuevo cierre
-      final data = await _client
-          .from('cierres_diarios')
-          .insert(cierre.toMap())
           .select('id')
-          .single();
-      return data['id'] as int;
+          .gte('fecha', '$fechaStr 00:00:00')
+          .lte('fecha', '$fechaStr 23:59:59')
+          .maybeSingle();
+
+      if (existing != null) {
+        print('Cierre ya existe, actualizando id: ${existing['id']}');
+        // Actualizar cierre existente
+        await _client
+            .from('cierres_diarios')
+            .update(cierre.toMap())
+            .eq('id', existing['id']);
+        return existing['id'] as int;
+      } else {
+        print('Creando nuevo cierre');
+        // Insertar nuevo cierre
+        final map = cierre.toMap();
+        print('Map a insertar: $map');
+        final data = await _client
+            .from('cierres_diarios')
+            .insert(map)
+            .select('id')
+            .single();
+        print('Cierre insertado con id: ${data['id']}');
+        return data['id'] as int;
+      }
+    } catch (e) {
+      print('ERROR al guardar cierre: $e');
+      rethrow;
     }
   }
 
   /// Obtiene todos los cierres diarios
   Future<List<CierreDia>> obtenerCierresDiarios() async {
-    final response = await _client
-        .from('cierres_diarios')
-        .select()
-        .order('fecha', ascending: false);
-    return (response as List).map((e) => CierreDia.fromMap(e)).toList();
+    try {
+      final response = await _client
+          .from('cierres_diarios')
+          .select()
+          .order('fecha', ascending: false);
+      print('Cierres obtenidos: ${response.length} registros');
+      return (response as List).map((e) => CierreDia.fromMap(e)).toList();
+    } catch (e) {
+      print('ERROR al obtener cierres: $e');
+      rethrow;
+    }
   }
 
   /// Obtiene el cierre de una fecha específica
@@ -209,19 +226,27 @@ class DatabaseService {
 
   /// Crea automáticamente el cierre del día con los datos actuales
   Future<CierreDia> crearCierreDiario(DateTime fecha) async {
-    final ingresosTotales = await calcularTotalIngresos(fecha);
-    final gastosTotales = await calcularTotalGastos(fecha);
-    final resultadoFinal = ingresosTotales - gastosTotales;
+    try {
+      final ingresosTotales = await calcularTotalIngresos(fecha);
+      final gastosTotales = await calcularTotalGastos(fecha);
+      final resultadoFinal = ingresosTotales - gastosTotales;
 
-    final cierre = CierreDia(
-      fecha: fecha,
-      ingresosTotales: ingresosTotales,
-      gastosTotales: gastosTotales,
-      resultadoFinal: resultadoFinal,
-    );
+      print('Creando cierre: ingresos=$ingresosTotales, gastos=$gastosTotales, resultado=$resultadoFinal');
 
-    await guardarCierreDiario(cierre);
-    return cierre;
+      final cierre = CierreDia(
+        fecha: fecha,
+        ingresosTotales: ingresosTotales,
+        gastosTotales: gastosTotales,
+        resultadoFinal: resultadoFinal,
+      );
+
+      final id = await guardarCierreDiario(cierre);
+      print('Cierre guardado con id: $id');
+      return cierre.copyWith(id: id);
+    } catch (e) {
+      print('ERROR al crear cierre: $e');
+      rethrow;
+    }
   }
 
   /// Actualiza un cierre existente
