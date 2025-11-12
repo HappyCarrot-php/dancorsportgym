@@ -1,8 +1,9 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
-import 'package:screenshot/screenshot.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../controllers/cierre_controller.dart';
@@ -63,7 +64,7 @@ class _CierreCard extends StatefulWidget {
 }
 
 class _CierreCardState extends State<_CierreCard> {
-  final ScreenshotController _screenshotController = ScreenshotController();
+  final GlobalKey _repaintKey = GlobalKey();
   bool _capturando = false;
 
   Future<void> _guardarImagen() async {
@@ -82,9 +83,13 @@ class _CierreCardState extends State<_CierreCard> {
         }
       }
 
-      // Capturar screenshot
-      final image = await _screenshotController.capture();
-      if (image == null) throw 'Error al capturar imagen';
+      // Capturar screenshot usando RepaintBoundary
+      RenderRepaintBoundary boundary = _repaintKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) throw 'Error al capturar imagen';
+      
+      Uint8List pngBytes = byteData.buffer.asUint8List();
 
       // Guardar en galería
       final directory = Platform.isAndroid
@@ -98,7 +103,7 @@ class _CierreCardState extends State<_CierreCard> {
       final fecha = AppConstants.formatearFechaCorta(widget.cierre.fecha).replaceAll('/', '-');
       final fileName = 'cierre_$fecha.png';
       final file = File('${directory.path}/$fileName');
-      await file.writeAsBytes(image);
+      await file.writeAsBytes(pngBytes);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -287,9 +292,21 @@ class _CierreCardState extends State<_CierreCard> {
                   _editarCierre(context);
                 } else if (value == 'eliminar') {
                   _eliminarCierre(context);
+                } else if (value == 'descargar') {
+                  _guardarImagen();
                 }
               },
               itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: 'descargar',
+                  child: Row(
+                    children: [
+                      Icon(Icons.download, color: Colors.blue, size: 20),
+                      SizedBox(width: 8),
+                      Text('Descargar reporte como imagen'),
+                    ],
+                  ),
+                ),
                 PopupMenuItem(
                   value: 'editar',
                   child: Row(
@@ -316,32 +333,37 @@ class _CierreCardState extends State<_CierreCard> {
         ),
         children: [
           const Divider(),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _buildDetalleFila(
-                  'Ingresos Totales',
-                  widget.cierre.ingresosTotales,
-                  const Color(AppConstants.colorIngreso),
-                  Icons.trending_up,
-                ),
-                const SizedBox(height: 12),
-                _buildDetalleFila(
-                  'Gastos Totales',
-                  widget.cierre.gastosTotales,
-                  const Color(AppConstants.colorGasto),
-                  Icons.trending_down,
-                ),
-                const Divider(height: 24),
-                _buildDetalleFila(
-                  'Resultado Final',
-                  widget.cierre.resultadoFinal,
-                  colorResultado,
-                  esPositivo ? Icons.check_circle : Icons.warning,
-                  isBold: true,
-                ),
-              ],
+          // Contenido capturable
+          RepaintBoundary(
+            key: _repaintKey,
+            child: Container(
+              color: Colors.white,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _buildDetalleFila(
+                    'Ingresos Totales',
+                    widget.cierre.ingresosTotales,
+                    const Color(AppConstants.colorIngreso),
+                    Icons.trending_up,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildDetalleFila(
+                    'Gastos Totales',
+                    widget.cierre.gastosTotales,
+                    const Color(AppConstants.colorGasto),
+                    Icons.trending_down,
+                  ),
+                  const Divider(height: 24),
+                  _buildDetalleFila(
+                    'Resultado Final',
+                    widget.cierre.resultadoFinal,
+                    colorResultado,
+                    esPositivo ? Icons.check_circle : Icons.warning,
+                    isBold: true,
+                  ),
+                ],
+              ),
             ),
           ),
         ],
