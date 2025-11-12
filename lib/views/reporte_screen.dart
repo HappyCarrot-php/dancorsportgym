@@ -75,11 +75,54 @@ class _CierreCardState extends State<_CierreCard> {
     });
 
     try {
-      // Solicitar permisos
+      // Solicitar permisos según la versión de Android
       if (Platform.isAndroid) {
-        final status = await Permission.storage.request();
+        // Para Android 13+ (API 33+) usar READ_MEDIA_IMAGES
+        // Para Android 10-12 (API 29-32) usar WRITE_EXTERNAL_STORAGE
+        PermissionStatus status;
+        
+        // Intentar primero con photos (Android 13+)
+        status = await Permission.photos.request();
+        
+        // Si no está disponible o denegado, intentar con storage (Android 10-12)
         if (!status.isGranted) {
-          throw 'Permiso de almacenamiento denegado';
+          status = await Permission.storage.request();
+        }
+        
+        // Si aún está denegado, verificar si está permanentemente denegado
+        if (!status.isGranted) {
+          if (status.isPermanentlyDenied) {
+            // Mostrar diálogo para abrir configuración
+            if (mounted) {
+              final openSettings = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('📸 Permiso Requerido'),
+                  content: const Text(
+                    'Se necesita permiso para guardar imágenes en la galería.\n\n'
+                    '¿Deseas abrir la configuración para habilitarlo?'
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancelar'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Abrir Configuración'),
+                    ),
+                  ],
+                ),
+              );
+              
+              if (openSettings == true) {
+                await openAppSettings();
+              }
+            }
+            throw 'Permiso de almacenamiento denegado. Habilítalo en Configuración.';
+          } else {
+            throw 'Permiso de almacenamiento denegado';
+          }
         }
       }
 
@@ -108,9 +151,16 @@ class _CierreCardState extends State<_CierreCard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ Imagen guardada en: ${directory.path}'),
+            content: Text('✅ Imagen guardada en: ${directory.path}/$fileName'),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Ver Carpeta',
+              textColor: Colors.white,
+              onPressed: () {
+                // Aquí podrías abrir el explorador de archivos si deseas
+              },
+            ),
           ),
         );
       }
@@ -120,6 +170,7 @@ class _CierreCardState extends State<_CierreCard> {
           SnackBar(
             content: Text('❌ Error: $e'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
