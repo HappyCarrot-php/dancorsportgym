@@ -1,5 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../controllers/cierre_controller.dart';
 import '../models/cierre_dia.dart';
 import '../utils/constants.dart';
@@ -48,18 +53,87 @@ class ReporteScreen extends StatelessWidget {
   }
 }
 
-class _CierreCard extends StatelessWidget {
+class _CierreCard extends StatefulWidget {
   final CierreDia cierre;
 
   const _CierreCard({required this.cierre});
 
+  @override
+  State<_CierreCard> createState() => _CierreCardState();
+}
+
+class _CierreCardState extends State<_CierreCard> {
+  final ScreenshotController _screenshotController = ScreenshotController();
+  bool _capturando = false;
+
+  Future<void> _guardarImagen() async {
+    if (_capturando) return;
+    
+    setState(() {
+      _capturando = true;
+    });
+
+    try {
+      // Solicitar permisos
+      if (Platform.isAndroid) {
+        final status = await Permission.storage.request();
+        if (!status.isGranted) {
+          throw 'Permiso de almacenamiento denegado';
+        }
+      }
+
+      // Capturar screenshot
+      final image = await _screenshotController.capture();
+      if (image == null) throw 'Error al capturar imagen';
+
+      // Guardar en galería
+      final directory = Platform.isAndroid
+          ? Directory('/storage/emulated/0/Pictures/GestorDeCaja')
+          : await getApplicationDocumentsDirectory();
+
+      if (Platform.isAndroid && !await directory.exists()) {
+        await directory.create(recursive: true);
+      }
+
+      final fecha = AppConstants.formatearFechaCorta(widget.cierre.fecha).replaceAll('/', '-');
+      final fileName = 'cierre_$fecha.png';
+      final file = File('${directory.path}/$fileName');
+      await file.writeAsBytes(image);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Imagen guardada en: ${directory.path}'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _capturando = false;
+        });
+      }
+    }
+  }
+
   Future<void> _editarCierre(BuildContext context) async {
     final controller = Provider.of<CierreController>(context, listen: false);
     final ingresosTotalesController = TextEditingController(
-      text: cierre.ingresosTotales.toStringAsFixed(2),
+      text: widget.cierre.ingresosTotales.toStringAsFixed(2),
     );
     final gastosTotalesController = TextEditingController(
-      text: cierre.gastosTotales.toStringAsFixed(2),
+      text: widget.cierre.gastosTotales.toStringAsFixed(2),
     );
 
     await showDialog(
@@ -99,7 +173,7 @@ class _CierreCard extends StatelessWidget {
               final gastos = double.tryParse(gastosTotalesController.text) ?? 0;
               final resultado = ingresos - gastos;
 
-              final cierreActualizado = cierre.copyWith(
+              final cierreActualizado = widget.cierre.copyWith(
                 ingresosTotales: ingresos,
                 gastosTotales: gastos,
                 resultadoFinal: resultado,
@@ -131,7 +205,7 @@ class _CierreCard extends StatelessWidget {
       builder: (context) => AlertDialog(
         title: const Text('⚠️ Confirmar Eliminación'),
         content: Text(
-          '¿Eliminar el cierre del día ${AppConstants.formatearFechaCorta(cierre.fecha)}?',
+          '¿Eliminar el cierre del día ${AppConstants.formatearFechaCorta(widget.cierre.fecha)}?',
         ),
         actions: [
           TextButton(
@@ -148,7 +222,7 @@ class _CierreCard extends StatelessWidget {
     );
 
     if (confirmar == true && context.mounted) {
-      await controller.eliminarCierre(cierre.id!);
+      await controller.eliminarCierre(widget.cierre.id!);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -162,7 +236,7 @@ class _CierreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final esPositivo = cierre.resultadoFinal >= 0;
+    final esPositivo = widget.cierre.resultadoFinal >= 0;
     final colorResultado = esPositivo
         ? const Color(AppConstants.colorIngreso)
         : const Color(AppConstants.colorGasto);
@@ -176,14 +250,14 @@ class _CierreCard extends StatelessWidget {
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         title: Text(
-          AppConstants.formatearFechaCorta(cierre.fecha),
+          AppConstants.formatearFechaCorta(widget.cierre.fecha),
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
         ),
         subtitle: Text(
-          AppConstants.formatearFechaLarga(cierre.fecha),
+          AppConstants.formatearFechaLarga(widget.cierre.fecha),
           style: TextStyle(
             color: Colors.grey[600],
             fontSize: 14,
@@ -199,7 +273,7 @@ class _CierreCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                AppConstants.formatearMoneda(cierre.resultadoFinal),
+                AppConstants.formatearMoneda(widget.cierre.resultadoFinal),
                 style: TextStyle(
                   color: colorResultado,
                   fontWeight: FontWeight.bold,
@@ -248,21 +322,21 @@ class _CierreCard extends StatelessWidget {
               children: [
                 _buildDetalleFila(
                   'Ingresos Totales',
-                  cierre.ingresosTotales,
+                  widget.cierre.ingresosTotales,
                   const Color(AppConstants.colorIngreso),
                   Icons.trending_up,
                 ),
                 const SizedBox(height: 12),
                 _buildDetalleFila(
                   'Gastos Totales',
-                  cierre.gastosTotales,
+                  widget.cierre.gastosTotales,
                   const Color(AppConstants.colorGasto),
                   Icons.trending_down,
                 ),
                 const Divider(height: 24),
                 _buildDetalleFila(
                   'Resultado Final',
-                  cierre.resultadoFinal,
+                  widget.cierre.resultadoFinal,
                   colorResultado,
                   esPositivo ? Icons.check_circle : Icons.warning,
                   isBold: true,
