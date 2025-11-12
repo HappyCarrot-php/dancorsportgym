@@ -4,7 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:gal/gal.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../controllers/cierre_controller.dart';
 import '../models/cierre_dia.dart';
@@ -147,37 +147,13 @@ class _CierreCardState extends State<_CierreCard> {
       
       Uint8List pngBytes = byteData.buffer.asUint8List();
 
-      // Guardar en carpeta Screenshots y Pictures (doble ubicación para mayor compatibilidad)
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      // Guardar imagen en la galería usando Gal
       final fecha = AppConstants.formatearFechaCorta(widget.cierre.fecha).replaceAll('/', '-');
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = 'Cierre_$fecha\_$timestamp.png';
       
-      if (Platform.isAndroid) {
-        // Intentar guardar en Screenshots primero
-        final screenshotsDir = Directory('/storage/emulated/0/Pictures/Screenshots');
-        if (!await screenshotsDir.exists()) {
-          await screenshotsDir.create(recursive: true);
-        }
-        
-        final screenshotFile = File('${screenshotsDir.path}/$fileName');
-        await screenshotFile.writeAsBytes(pngBytes);
-        
-        // También guardar en DCIM/Screenshots como respaldo
-        try {
-          final dcimDir = Directory('/storage/emulated/0/DCIM/Screenshots');
-          if (!await dcimDir.exists()) {
-            await dcimDir.create(recursive: true);
-          }
-          final dcimFile = File('${dcimDir.path}/$fileName');
-          await dcimFile.writeAsBytes(pngBytes);
-        } catch (e) {
-          print('No se pudo guardar en DCIM: $e');
-        }
-      } else {
-        final directory = await getApplicationDocumentsDirectory();
-        final file = File('${directory.path}/$fileName');
-        await file.writeAsBytes(pngBytes);
-      }
+      // Guardar directamente en la galería
+      await Gal.putImageBytes(pngBytes, name: fileName);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -186,12 +162,13 @@ class _CierreCardState extends State<_CierreCard> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('✅ Screenshot guardado', 
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('✅ Imagen guardada en Galería', 
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                const SizedBox(height: 6),
+                const Text('Abre tu Galería de fotos para verla',
+                  style: TextStyle(fontSize: 13)),
                 const SizedBox(height: 4),
-                Text('Busca en: Galería > Screenshots',
-                  style: TextStyle(fontSize: 12)),
-                Text('Archivo: $fileName',
+                Text('Nombre: $fileName',
                   style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic)),
               ],
             ),
