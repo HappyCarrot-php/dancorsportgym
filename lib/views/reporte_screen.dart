@@ -126,11 +126,24 @@ class _CierreCardState extends State<_CierreCard> {
         }
       }
 
+      // Esperar a que el widget se renderice completamente
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // Validar que el contexto exista
+      if (_repaintKey.currentContext == null) {
+        throw 'No se pudo capturar la imagen. Intenta abrir el reporte primero.';
+      }
+
       // Capturar screenshot usando RepaintBoundary
-      RenderRepaintBoundary boundary = _repaintKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      RenderObject? renderObject = _repaintKey.currentContext!.findRenderObject();
+      if (renderObject == null || renderObject is! RenderRepaintBoundary) {
+        throw 'Error al preparar la captura. Intenta nuevamente.';
+      }
+
+      RenderRepaintBoundary boundary = renderObject;
       ui.Image image = await boundary.toImage(pixelRatio: 3.0);
       ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) throw 'Error al capturar imagen';
+      if (byteData == null) throw 'Error al procesar la imagen';
       
       Uint8List pngBytes = byteData.buffer.asUint8List();
 
